@@ -1,5 +1,6 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+# Docs for the Azure Web Apps Deploy action:
+# https://github.com/Azure/webapps-deploy
 
 name: Build and deploy Node.js app to Azure Web App
 
@@ -25,6 +26,28 @@ jobs:
       - name: Install backend dependencies
         working-directory: server
         run: npm install --omit=dev
+
+      - name: Create web.config for Windows App Service
+        shell: pwsh
+        run: |
+          @'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="iisnode" path="index.js" verb="*" modules="iisnode" />
+              </handlers>
+              <rewrite>
+                <rules>
+                  <rule name="NodeApp" stopProcessing="true">
+                    <match url=".*" />
+                    <action type="Rewrite" url="index.js" />
+                  </rule>
+                </rules>
+              </rewrite>
+            </system.webServer>
+          </configuration>
+          '@ | Set-Content -Path server/web.config -Encoding utf8
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
