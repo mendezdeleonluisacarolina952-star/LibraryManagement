@@ -1,3 +1,4 @@
+
 jest.mock('../models/book', () => ({
     findById: jest.fn(),
     aggregate: jest.fn(),
@@ -34,28 +35,47 @@ beforeEach(() => {
 
 describe('Pruebas unitarias del controlador de libros', () => {
     test('TB-01: consulta un libro por ID', async () => {
-        const book = { _id: '123', name: 'Libro de prueba' };
+        const book = {
+            _id: '507f1f77bcf86cd799439011',
+            name: 'Libro de prueba'
+        };
+
         Book.findById.mockResolvedValue(book);
 
-        const req = { params: { id: '507f1f77bcf86cd799439011' } };
+        const req = {
+            params: {
+                id: '507f1f77bcf86cd799439011'
+            }
+        };
+
         const res = createResponse();
 
         await getBook(req, res);
 
         expect(Book.findById).toHaveBeenCalledWith(req.params.id);
         expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({ success: true, book });
+        expect(res.json).toHaveBeenCalledWith({
+            success: true,
+            book
+        });
     });
 
     test('TB-02: maneja un error al consultar un libro', async () => {
-        Book.findById.mockRejectedValue(new Error('Database error'));
+        Book.findById.mockRejectedValue(
+            new Error('Database error')
+        );
 
-        const req = { params: { id: '507f1f77bcf86cd799439011' } };
+        const req = {
+            params: {
+                id: '507f1f77bcf86cd799439011'
+            }
+        };
+
         const res = createResponse();
 
         await getBook(req, res);
 
-        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.status).toHaveBeenCalledWith(500);
         expect(res.json).toHaveBeenCalledWith({
             success: false,
             message: 'No se pudo consultar el libro'
@@ -63,7 +83,13 @@ describe('Pruebas unitarias del controlador de libros', () => {
     });
 
     test('TB-03: obtiene la lista de libros', async () => {
-        const books = [{ _id: '123', name: 'Libro de prueba' }];
+        const books = [
+            {
+                _id: '507f1f77bcf86cd799439011',
+                name: 'Libro de prueba'
+            }
+        ];
+
         Book.aggregate.mockResolvedValue(books);
 
         const req = {};
@@ -80,14 +106,16 @@ describe('Pruebas unitarias del controlador de libros', () => {
     });
 
     test('TB-04: maneja un error al listar libros', async () => {
-        Book.aggregate.mockRejectedValue(new Error('Database error'));
+        Book.aggregate.mockRejectedValue(
+            new Error('Database error')
+        );
 
         const req = {};
         const res = createResponse();
 
         await getAllBooks(req, res);
 
-        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.status).toHaveBeenCalledWith(500);
         expect(res.json).toHaveBeenCalledWith({
             success: false,
             message: 'No se pudieron consultar los libros'
@@ -96,7 +124,7 @@ describe('Pruebas unitarias del controlador de libros', () => {
 
     test('TB-05: registra un libro correctamente', async () => {
         const book = {
-            _id: '456',
+            _id: '507f1f77bcf86cd799439013',
             name: 'Nuevo libro',
             isbn: '9781234567890',
             isAvailable: true
@@ -125,7 +153,8 @@ describe('Pruebas unitarias del controlador de libros', () => {
                 isAvailable: true
             })
         );
-        expect(res.status).toHaveBeenCalledWith(200);
+
+        expect(res.status).toHaveBeenCalledWith(201);
         expect(res.json).toHaveBeenCalledWith({
             success: true,
             newBook: book
@@ -153,12 +182,20 @@ describe('Pruebas unitarias del controlador de libros', () => {
     });
 
     test('TB-07: actualiza un libro correctamente', async () => {
-        const book = { _id: '507f1f77bcf86cd799439011', name: 'Actualizado' };
+        const book = {
+            _id: '507f1f77bcf86cd799439011',
+            name: 'Actualizado'
+        };
+
         Book.findByIdAndUpdate.mockResolvedValue(book);
 
         const req = {
-            params: { id: '507f1f77bcf86cd799439011' },
-            body: { name: 'Actualizado' }
+            params: {
+                id: '507f1f77bcf86cd799439011'
+            },
+            body: {
+                name: 'Actualizado'
+            }
         };
 
         const res = createResponse();
@@ -167,9 +204,17 @@ describe('Pruebas unitarias del controlador de libros', () => {
 
         expect(Book.findByIdAndUpdate).toHaveBeenCalledWith(
             req.params.id,
-            { $set: { name: 'Actualizado' } },
-            { new: true, runValidators: true }
+            {
+                $set: {
+                    name: 'Actualizado'
+                }
+            },
+            {
+                new: true,
+                runValidators: true
+            }
         );
+
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith({
             success: true,
@@ -179,8 +224,12 @@ describe('Pruebas unitarias del controlador de libros', () => {
 
     test('TB-08: rechaza una actualizacion con ID invalido', async () => {
         const req = {
-            params: { id: '123' },
-            body: { name: 'Actualizado' }
+            params: {
+                id: '123'
+            },
+            body: {
+                name: 'Actualizado'
+            }
         };
 
         const res = createResponse();
@@ -189,18 +238,34 @@ describe('Pruebas unitarias del controlador de libros', () => {
 
         expect(Book.findByIdAndUpdate).not.toHaveBeenCalled();
         expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+            success: false,
+            message: 'ID de libro no valido'
+        });
     });
 
     test('TB-09: elimina un libro correctamente', async () => {
-        const book = { _id: '507f1f77bcf86cd799439011', name: 'Eliminado' };
+        const book = {
+            _id: '507f1f77bcf86cd799439011',
+            name: 'Eliminado'
+        };
+
         Book.findByIdAndDelete.mockResolvedValue(book);
 
-        const req = { params: { id: '507f1f77bcf86cd799439011' } };
+        const req = {
+            params: {
+                id: '507f1f77bcf86cd799439011'
+            }
+        };
+
         const res = createResponse();
 
         await deleteBook(req, res);
 
-        expect(Book.findByIdAndDelete).toHaveBeenCalledWith(req.params.id);
+        expect(Book.findByIdAndDelete).toHaveBeenCalledWith(
+            req.params.id
+        );
+
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith({
             success: true,
@@ -211,7 +276,12 @@ describe('Pruebas unitarias del controlador de libros', () => {
     test('TB-10: responde 404 cuando el libro no existe', async () => {
         Book.findByIdAndDelete.mockResolvedValue(null);
 
-        const req = { params: { id: '507f1f77bcf86cd799439011' } };
+        const req = {
+            params: {
+                id: '507f1f77bcf86cd799439011'
+            }
+        };
+
         const res = createResponse();
 
         await deleteBook(req, res);

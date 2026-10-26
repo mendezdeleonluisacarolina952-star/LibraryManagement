@@ -11,12 +11,8 @@ const ALLOWED_FIELDS = [
     'photoUrl'
 ];
 
-const isValidId = (id) => {
-    return (
-        typeof id === 'string' &&
-        /^[a-fA-F0-9]{24}$/.test(id)
-    );
-};
+const isValidId = (id) =>
+    typeof id === 'string' && /^[a-fA-F0-9]{24}$/.test(id);
 
 const getAllowedFields = (body) => {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -34,23 +30,22 @@ const getAllowedFields = (body) => {
     return data;
 };
 
-const validateBookData = (data, isNew = false) => {
-    if (isNew || data.name !== undefined) {
-        if (typeof data.name !== 'string' || !data.name.trim()) {
-            return 'El nombre del libro es obligatorio';
+const validateBook = (data, creating = false) => {
+    for (const field of ['name', 'isbn']) {
+        if (
+            (creating || data[field] !== undefined) &&
+            (typeof data[field] !== 'string' || !data[field].trim())
+        ) {
+            return `${field === 'name' ? 'El nombre del libro' : 'El ISBN'} es obligatorio`;
         }
     }
 
-    if (isNew || data.isbn !== undefined) {
-        if (typeof data.isbn !== 'string' || !data.isbn.trim()) {
-            return 'El ISBN es obligatorio';
-        }
-    }
-
-    if (isNew || data.isAvailable !== undefined) {
-        if (typeof data.isAvailable !== 'boolean') {
-            return 'isAvailable debe ser booleano';
-        }
+    if (
+        (creating || data.isAvailable !== undefined) &&
+        data.isAvailable !== undefined &&
+        typeof data.isAvailable !== 'boolean'
+    ) {
+        return 'isAvailable debe ser booleano';
     }
 
     for (const field of ['authorId', 'genreId']) {
@@ -59,7 +54,7 @@ const validateBookData = (data, isNew = false) => {
             data[field] !== null &&
             !isValidId(data[field])
         ) {
-            return `El campo ${ field } no contiene un ID valido`;
+            return `${field} no contiene un ID valido`;
         }
     }
 
@@ -68,18 +63,15 @@ const validateBookData = (data, isNew = false) => {
             data[field] !== undefined &&
             typeof data[field] !== 'string'
         ) {
-            return `El campo ${ field } debe ser texto`;
+            return `${field} debe ser texto`;
         }
     }
 
     return null;
 };
 
-// Consultar libro por ID
 const getBook = async (req, res) => {
-    const { id } = req.params;
-
-    if (!isValidId(id)) {
+    if (!isValidId(req.params.id)) {
         return res.status(400).json({
             success: false,
             message: 'ID de libro no valido'
@@ -87,22 +79,28 @@ const getBook = async (req, res) => {
     }
 
     try {
-        const book = await Book.findById(id);
+        const book = await Book.findById(req.params.id);
+
+        if (!book) {
+            return res.status(404).json({
+                success: false,
+                message: 'Libro no encontrado'
+            });
+        }
 
         return res.status(200).json({
             success: true,
             book
         });
-    } catch (err) {
-        return res.status(400).json({
+    } catch {
+        return res.status(500).json({
             success: false,
             message: 'No se pudo consultar el libro'
         });
     }
 };
 
-// Consultar libros con autor y genero
-const getAllBooks = async (req, res) => {
+const getAllBooks = async (_req, res) => {
     try {
         const books = await Book.aggregate([
             {
@@ -139,53 +137,56 @@ const getAllBooks = async (req, res) => {
             success: true,
             booksList: books
         });
-    } catch (err) {
-        return res.status(400).json({
+    } catch {
+        return res.status(500).json({
             success: false,
             message: 'No se pudieron consultar los libros'
         });
     }
 };
 
-// Crear libro
 const addBook = async (req, res) => {
-    const newBook = getAllowedFields(req.body);
+    const data = getAllowedFields(req.body);
 
-    if (!newBook) {
+    if (!data) {
         return res.status(400).json({
             success: false,
             message: 'Datos del libro no validos'
         });
     }
 
-    const validationError = validateBookData(newBook, true);
+    const error = validateBook(data, true);
 
-    if (validationError) {
+    if (error) {
         return res.status(400).json({
             success: false,
-            message: validationError
+            message: error
         });
     }
 
-    newBook.name = newBook.name.trim();
-    newBook.isbn = newBook.isbn.trim();
+    data.name = data.name.trim();
+    data.isbn = data.isbn.trim();
 
-    if (newBook.authorId) {
-        newBook.authorId = new mongoose.Types.ObjectId(newBook.authorId);
+    for (const field of ['authorId', 'genreId']) {
+        if (data[field]) {
+            data[field] = new mongoose.Types.ObjectId(data[field]);
+        }
     }
 
-    if (newBook.genreId) {
-        newBook.genreId = new mongoose.Types.ObjectId(newBook.genreId);
+    if (data.summary !== undefined) {
+        data.summary = data.summary.trim();
+    }
+
+    if (data.photoUrl !== undefined) {
+        data.photoUrl = data.photoUrl.trim();
     }
 
     try {
-        const book = await Book.create(newBook);
-
-        return res.status(200).json({
+        return res.status(201).json({
             success: true,
-            newBook: book
+            newBook: await Book.create(data)
         });
-    } catch (err) {
+    } catch {
         return res.status(400).json({
             success: false,
             message: 'No se pudo registrar el libro'
@@ -193,10 +194,9 @@ const addBook = async (req, res) => {
     }
 };
 
-// Actualizar libro
 const updateBook = async (req, res) => {
     const { id } = req.params;
-    const updatedBook = getAllowedFields(req.body);
+    const data = getAllowedFields(req.body);
 
     if (!isValidId(id)) {
         return res.status(400).json({
@@ -205,41 +205,38 @@ const updateBook = async (req, res) => {
         });
     }
 
-    if (!updatedBook || Object.keys(updatedBook).length === 0) {
+    if (!data || Object.keys(data).length === 0) {
         return res.status(400).json({
             success: false,
             message: 'No hay campos validos para actualizar'
         });
     }
 
-    const validationError = validateBookData(updatedBook);
+    const error = validateBook(data);
 
-    if (validationError) {
+    if (error) {
         return res.status(400).json({
             success: false,
-            message: validationError
+            message: error
         });
     }
 
-    if (updatedBook.name !== undefined) {
-        updatedBook.name = updatedBook.name.trim();
-    }
-
-    if (updatedBook.isbn !== undefined) {
-        updatedBook.isbn = updatedBook.isbn.trim();
+    for (const field of ['name', 'isbn', 'summary', 'photoUrl']) {
+        if (typeof data[field] === 'string') {
+            data[field] = data[field].trim();
+        }
     }
 
     for (const field of ['authorId', 'genreId']) {
-        if (updatedBook[field]) {
-            updatedBook[field] =
-                new mongoose.Types.ObjectId(updatedBook[field]);
+        if (data[field]) {
+            data[field] = new mongoose.Types.ObjectId(data[field]);
         }
     }
 
     try {
         const book = await Book.findByIdAndUpdate(
             id,
-            { $set: updatedBook },
+            { $set: data },
             { new: true, runValidators: true }
         );
 
@@ -254,7 +251,7 @@ const updateBook = async (req, res) => {
             success: true,
             updatedBook: book
         });
-    } catch (err) {
+    } catch {
         return res.status(400).json({
             success: false,
             message: 'No se pudo actualizar el libro'
@@ -262,11 +259,8 @@ const updateBook = async (req, res) => {
     }
 };
 
-// Eliminar libro
 const deleteBook = async (req, res) => {
-    const { id } = req.params;
-
-    if (!isValidId(id)) {
+    if (!isValidId(req.params.id)) {
         return res.status(400).json({
             success: false,
             message: 'ID de libro no valido'
@@ -274,7 +268,7 @@ const deleteBook = async (req, res) => {
     }
 
     try {
-        const book = await Book.findByIdAndDelete(id);
+        const book = await Book.findByIdAndDelete(req.params.id);
 
         if (!book) {
             return res.status(404).json({
@@ -287,8 +281,8 @@ const deleteBook = async (req, res) => {
             success: true,
             deletedBook: book
         });
-    } catch (err) {
-        return res.status(400).json({
+    } catch {
+        return res.status(500).json({
             success: false,
             message: 'No se pudo eliminar el libro'
         });
