@@ -10,6 +10,9 @@ on:
       - DEV
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+
 jobs:
   sonarqube:
     name: SonarQube
@@ -17,26 +20,29 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
+          package-manager-cache: false
 
       - name: Install backend dependencies
         working-directory: server
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run tests and generate coverage
         working-directory: server
         run: npm test -- --coverage
 
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@016cabf33a6b7edf0733e179a03ad408ad4e88ba # patched v5.3.1
         with:
           args: "-Dsonar.javascript.lcov.reportPaths=server/coverage/lcov.info"
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+

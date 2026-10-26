@@ -17,6 +17,16 @@ const {
     deleteBook
 } = require('../controllers/bookController');
 
+const VALID_ID = '507f1f77bcf86cd799439011';
+const VALID_AUTHOR_ID = '507f1f77bcf86cd799439012';
+const VALID_GENRE_ID = '507f1f77bcf86cd799439013';
+
+const validBook = {
+    name: 'Libro de prueba',
+    isbn: '9781234567890',
+    isAvailable: true
+};
+
 const createResponse = () => {
     const res = {
         status: jest.fn(),
@@ -34,262 +44,470 @@ beforeEach(() => {
 });
 
 describe('Pruebas unitarias del controlador de libros', () => {
-    test('TB-01: consulta un libro por ID', async () => {
-        const book = {
-            _id: '507f1f77bcf86cd799439011',
-            name: 'Libro de prueba'
-        };
+    describe('getBook', () => {
+        test('TB-01: consulta un libro por ID', async () => {
+            const book = { _id: VALID_ID, name: 'Libro de prueba' };
+            Book.findById.mockResolvedValue(book);
 
-        Book.findById.mockResolvedValue(book);
+            const req = { params: { id: VALID_ID } };
+            const res = createResponse();
 
-        const req = {
-            params: {
-                id: '507f1f77bcf86cd799439011'
-            }
-        };
+            await getBook(req, res);
 
-        const res = createResponse();
+            expect(Book.findById).toHaveBeenCalledWith(VALID_ID);
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({ success: true, book });
+        });
 
-        await getBook(req, res);
+        test('rechaza un ID invalido', async () => {
+            const res = createResponse();
 
-        expect(Book.findById).toHaveBeenCalledWith(req.params.id);
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({
-            success: true,
-            book
+            await getBook({ params: { id: '123' } }, res);
+
+            expect(Book.findById).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+        });
+
+        test('responde 404 si el libro no existe', async () => {
+            Book.findById.mockResolvedValue(null);
+            const res = createResponse();
+
+            await getBook({ params: { id: VALID_ID } }, res);
+
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'Libro no encontrado'
+            });
+        });
+
+        test('maneja un error al consultar un libro', async () => {
+            Book.findById.mockRejectedValue(new Error('Database error'));
+            const res = createResponse();
+
+            await getBook({ params: { id: VALID_ID } }, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'No se pudo consultar el libro'
+            });
         });
     });
 
-    test('TB-02: maneja un error al consultar un libro', async () => {
-        Book.findById.mockRejectedValue(
-            new Error('Database error')
-        );
+    describe('getAllBooks', () => {
+        test('TB-03: obtiene la lista de libros', async () => {
+            const books = [{ _id: VALID_ID, name: 'Libro de prueba' }];
+            Book.aggregate.mockResolvedValue(books);
+            const res = createResponse();
 
-        const req = {
-            params: {
-                id: '507f1f77bcf86cd799439011'
-            }
-        };
+            await getAllBooks({}, res);
 
-        const res = createResponse();
+            expect(Book.aggregate).toHaveBeenCalledWith(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        $lookup: expect.objectContaining({ from: 'authors' })
+                    }),
+                    expect.objectContaining({
+                        $lookup: expect.objectContaining({ from: 'genres' })
+                    })
+                ])
+            );
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                success: true,
+                booksList: books
+            });
+        });
 
-        await getBook(req, res);
+        test('maneja un error al listar libros', async () => {
+            Book.aggregate.mockRejectedValue(new Error('Database error'));
+            const res = createResponse();
 
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-            success: false,
-            message: 'No se pudo consultar el libro'
+            await getAllBooks({}, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'No se pudieron consultar los libros'
+            });
         });
     });
 
-    test('TB-03: obtiene la lista de libros', async () => {
-        const books = [
-            {
-                _id: '507f1f77bcf86cd799439011',
-                name: 'Libro de prueba'
-            }
-        ];
+    describe('addBook', () => {
+        test('TB-05: registra un libro correctamente y normaliza los campos', async () => {
+            const book = { _id: VALID_ID, name: 'Nuevo libro' };
+            Book.create.mockResolvedValue(book);
+            const res = createResponse();
 
-        Book.aggregate.mockResolvedValue(books);
-
-        const req = {};
-        const res = createResponse();
-
-        await getAllBooks(req, res);
-
-        expect(Book.aggregate).toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({
-            success: true,
-            booksList: books
-        });
-    });
-
-    test('TB-04: maneja un error al listar libros', async () => {
-        Book.aggregate.mockRejectedValue(
-            new Error('Database error')
-        );
-
-        const req = {};
-        const res = createResponse();
-
-        await getAllBooks(req, res);
-
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({
-            success: false,
-            message: 'No se pudieron consultar los libros'
-        });
-    });
-
-    test('TB-05: registra un libro correctamente', async () => {
-        const book = {
-            _id: '507f1f77bcf86cd799439013',
-            name: 'Nuevo libro',
-            isbn: '9781234567890',
-            isAvailable: true
-        };
-
-        Book.create.mockResolvedValue(book);
-
-        const req = {
-            body: {
-                name: 'Nuevo libro',
-                isbn: '9781234567890',
-                isAvailable: true,
-                authorId: '507f1f77bcf86cd799439011',
-                genreId: '507f1f77bcf86cd799439012'
-            }
-        };
-
-        const res = createResponse();
-
-        await addBook(req, res);
-
-        expect(Book.create).toHaveBeenCalledWith(
-            expect.objectContaining({
-                name: 'Nuevo libro',
-                isbn: '9781234567890',
-                isAvailable: true
-            })
-        );
-
-        expect(res.status).toHaveBeenCalledWith(201);
-        expect(res.json).toHaveBeenCalledWith({
-            success: true,
-            newBook: book
-        });
-    });
-
-    test('TB-06: rechaza un libro sin nombre', async () => {
-        const req = {
-            body: {
-                isbn: '9781234567890',
-                isAvailable: true
-            }
-        };
-
-        const res = createResponse();
-
-        await addBook(req, res);
-
-        expect(Book.create).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-            success: false,
-            message: 'El nombre del libro es obligatorio'
-        });
-    });
-
-    test('TB-07: actualiza un libro correctamente', async () => {
-        const book = {
-            _id: '507f1f77bcf86cd799439011',
-            name: 'Actualizado'
-        };
-
-        Book.findByIdAndUpdate.mockResolvedValue(book);
-
-        const req = {
-            params: {
-                id: '507f1f77bcf86cd799439011'
-            },
-            body: {
-                name: 'Actualizado'
-            }
-        };
-
-        const res = createResponse();
-
-        await updateBook(req, res);
-
-        expect(Book.findByIdAndUpdate).toHaveBeenCalledWith(
-            req.params.id,
-            {
-                $set: {
-                    name: 'Actualizado'
+            await addBook({
+                body: {
+                    name: '  Nuevo libro  ',
+                    isbn: ' 9781234567890 ',
+                    summary: '  Resumen ',
+                    photoUrl: ' https://example.com/book.jpg ',
+                    isAvailable: true,
+                    authorId: VALID_AUTHOR_ID,
+                    genreId: VALID_GENRE_ID,
+                    isAdmin: true
                 }
-            },
-            {
-                new: true,
-                runValidators: true
+            }, res);
+            expect(Book.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    name: 'Nuevo libro',
+                    isbn: '9781234567890',
+                    summary: 'Resumen',
+                    photoUrl: 'https://example.com/book.jpg',
+                    isAvailable: true,
+                    authorId: expect.anything(),
+                    genreId: expect.anything()
+                })
+            );
+
+            const createdData = Book.create.mock.calls[0][0];
+            expect(createdData.isAdmin).toBeUndefined();
+            expect(res.status).toHaveBeenCalledWith(201);
+            expect(res.json).toHaveBeenCalledWith({
+                success: true,
+                newBook: book
+            });
+        });
+
+        test.each([
+            ['cuerpo ausente', null],
+            ['cuerpo de tipo texto', 'invalid'],
+            ['cuerpo de tipo arreglo', []]
+        ])('rechaza %s', async (description, body) => {
+            const res = createResponse();
+
+            await addBook({ body }, res);
+
+            expect(Book.create).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'Datos del libro no validos'
+            });
+        });
+
+        test.each([
+            [{ isbn: '9781234567890' }, 'El nombre del libro es obligatorio'],
+            [{ name: '   ', isbn: '9781234567890' }, 'El nombre del libro es obligatorio'],
+            [{ name: 'Libro' }, 'El ISBN es obligatorio'],
+            [{ name: 'Libro', isbn: '   ' }, 'El ISBN es obligatorio']
+        ])('rechaza campos obligatorios invalidos', async (body, message) => {
+            const res = createResponse();
+
+            await addBook({ body }, res);
+
+            expect(Book.create).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message
+            });
+        });
+
+        test('rechaza disponibilidad que no sea booleana', async () => {
+            const res = createResponse();
+
+            await addBook({
+                body: { ...validBook, isAvailable: 'true' }
+            }, res);
+
+            expect(Book.create).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'isAvailable debe ser booleano'
+            });
+        });
+
+        test.each(['authorId', 'genreId'])(
+            'rechaza una referencia invalida en %s',
+            async field => {
+                const res = createResponse();
+
+                await addBook({
+                    body: { ...validBook, [field]: 'invalid-id' }
+                }, res);
+
+                expect(Book.create).not.toHaveBeenCalled();
+                expect(res.status).toHaveBeenCalledWith(400);
+                expect(res.json).toHaveBeenCalledWith({
+                    success: false,
+                    message: `${field} no contiene un ID valido`
+                });
             }
         );
 
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({
-            success: true,
-            updatedBook: book
+        test('acepta referencias nulas', async () => {
+            Book.create.mockResolvedValue({ ...validBook });
+            const res = createResponse();
+
+            await addBook({
+                body: {
+                    ...validBook,
+                    authorId: null,
+                    genreId: null
+                }
+            }, res);
+
+            expect(res.status).toHaveBeenCalledWith(201);
+            expect(Book.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    authorId: null,
+                    genreId: null
+                })
+            );
         });
-    });
 
-    test('TB-08: rechaza una actualizacion con ID invalido', async () => {
-        const req = {
-            params: {
-                id: '123'
-            },
-            body: {
-                name: 'Actualizado'
+        test.each(['summary', 'photoUrl'])(
+            'rechaza %s cuando no es texto',
+            async field => {
+                const res = createResponse();
+
+                await addBook({
+                    body: { ...validBook, [field]: 123 }
+                }, res);
+
+                expect(Book.create).not.toHaveBeenCalled();
+                expect(res.status).toHaveBeenCalledWith(400);
+                expect(res.json).toHaveBeenCalledWith({
+                    success: false,
+                    message: `${field} debe ser texto`
+                });
             }
-        };
-
-        const res = createResponse();
-
-        await updateBook(req, res);
-
-        expect(Book.findByIdAndUpdate).not.toHaveBeenCalled();
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-            success: false,
-            message: 'ID de libro no valido'
-        });
-    });
-
-    test('TB-09: elimina un libro correctamente', async () => {
-        const book = {
-            _id: '507f1f77bcf86cd799439011',
-            name: 'Eliminado'
-        };
-
-        Book.findByIdAndDelete.mockResolvedValue(book);
-
-        const req = {
-            params: {
-                id: '507f1f77bcf86cd799439011'
-            }
-        };
-
-        const res = createResponse();
-
-        await deleteBook(req, res);
-
-        expect(Book.findByIdAndDelete).toHaveBeenCalledWith(
-            req.params.id
         );
 
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({
-            success: true,
-            deletedBook: book
+        test('maneja un error al crear el libro', async () => {
+            Book.create.mockRejectedValue(new Error('Create failed'));
+            const res = createResponse();
+
+            await addBook({ body: validBook }, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'No se pudo registrar el libro'
+            });
         });
     });
 
-    test('TB-10: responde 404 cuando el libro no existe', async () => {
-        Book.findByIdAndDelete.mockResolvedValue(null);
+    describe('updateBook', () => {
+        test('TB-07: actualiza un libro correctamente', async () => {
+            const book = { _id: VALID_ID, name: 'Actualizado' };
+            Book.findByIdAndUpdate.mockResolvedValue(book);
+            const res = createResponse();
 
-        const req = {
-            params: {
-                id: '507f1f77bcf86cd799439011'
-            }
-        };
+            await updateBook({
+                params: { id: VALID_ID },
+                body: { name: 'Actualizado' }
+            }, res);
 
-        const res = createResponse();
+            expect(Book.findByIdAndUpdate).toHaveBeenCalledWith(
+                VALID_ID,
+                { $set: { name: 'Actualizado' } },
+                { new: true, runValidators: true }
+            );
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                success: true,
+                updatedBook: book
+            });
+        });
 
-        await deleteBook(req, res);
+        test('TB-08: rechaza una actualizacion con ID invalido', async () => {
+            const res = createResponse();
 
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({
-            success: false,
-            message: 'Libro no encontrado'
+            await updateBook({
+                params: { id: '123' },
+                body: { name: 'Actualizado' }
+            }, res);
+
+            expect(Book.findByIdAndUpdate).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+        });
+
+        test.each([
+            ['cuerpo ausente', null],
+            ['cuerpo de tipo arreglo', []],
+            ['sin campos permitidos', { isAdmin: true }]
+        ])('rechaza una actualizacion %s', async (description, body) => {
+            const res = createResponse();
+
+            await updateBook({
+                params: { id: VALID_ID },
+                body
+            }, res);
+
+            expect(Book.findByIdAndUpdate).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'No hay campos validos para actualizar'
+            });
+        });
+
+        test('rechaza un nombre vacio', async () => {
+            const res = createResponse();
+
+            await updateBook({
+                params: { id: VALID_ID },
+                body: { name: '   ' }
+            }, res);
+
+            expect(Book.findByIdAndUpdate).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'El nombre del libro es obligatorio'
+            });
+        });
+
+        test('rechaza un ISBN vacio', async () => {
+            const res = createResponse();
+
+            await updateBook({
+                params: { id: VALID_ID },
+                body: { isbn: '   ' }
+            }, res);
+
+            expect(Book.findByIdAndUpdate).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'El ISBN es obligatorio'
+            });
+        });
+
+        test('rechaza disponibilidad no booleana', async () => {
+            const res = createResponse();
+
+            await updateBook({
+                params: { id: VALID_ID },
+                body: { isAvailable: 1 }
+            }, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'isAvailable debe ser booleano'
+            });
+        });
+
+        test('rechaza una referencia invalida', async () => {
+            const res = createResponse();
+
+            await updateBook({
+                params: { id: VALID_ID },
+                body: { authorId: 'bad-id' }
+            }, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'authorId no contiene un ID valido'
+            });
+        });
+
+        test('rechaza un resumen que no sea texto', async () => {
+            const res = createResponse();
+
+            await updateBook({
+                params: { id: VALID_ID },
+                body: { summary: false }
+            }, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'summary debe ser texto'
+            });
+        });
+
+        test('responde 404 si no encuentra el libro', async () => {
+            Book.findByIdAndUpdate.mockResolvedValue(null);
+            const res = createResponse();
+
+            await updateBook({
+                params: { id: VALID_ID },
+                body: { name: 'Actualizado' }
+            }, res);
+
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'Libro no encontrado'
+            });
+        });
+
+        test('maneja un error al actualizar el libro', async () => {
+            Book.findByIdAndUpdate.mockRejectedValue(new Error('Update failed'));
+            const res = createResponse();
+
+            await updateBook({
+                params: { id: VALID_ID },
+                body: { name: 'Actualizado' }
+            }, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'No se pudo actualizar el libro'
+            });
+        });
+    });
+
+    describe('deleteBook', () => {
+        test('TB-09: elimina un libro correctamente', async () => {
+            const book = { _id: VALID_ID, name: 'Eliminado' };
+            Book.findByIdAndDelete.mockResolvedValue(book);
+            const res = createResponse();
+
+            await deleteBook({ params: { id: VALID_ID } }, res);
+
+            expect(Book.findByIdAndDelete).toHaveBeenCalledWith(VALID_ID);
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                success: true,
+                deletedBook: book
+            });
+        });
+
+        test('rechaza un ID invalido', async () => {
+            const res = createResponse();
+
+            await deleteBook({ params: { id: '123' } }, res);
+
+            expect(Book.findByIdAndDelete).not.toHaveBeenCalled();
+            expect(res.status).toHaveBeenCalledWith(400);
+        });
+
+        test('TB-10: responde 404 cuando el libro no existe', async () => {
+            Book.findByIdAndDelete.mockResolvedValue(null);
+            const res = createResponse();
+
+            await deleteBook({ params: { id: VALID_ID } }, res);
+
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'Libro no encontrado'
+            });
+        });
+
+        test('maneja un error al eliminar el libro', async () => {
+            Book.findByIdAndDelete.mockRejectedValue(new Error('Delete failed'));
+            const res = createResponse();
+
+            await deleteBook({ params: { id: VALID_ID } }, res);
+
+            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: 'No se pudo eliminar el libro'
+            });
         });
     });
 });
