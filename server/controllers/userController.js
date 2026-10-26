@@ -14,6 +14,58 @@ const publicUser = (user) => ({
     email: user.email
 });
 
+const isValidRequestBody = (body) =>
+    body !== null &&
+    typeof body === 'object' &&
+    !Array.isArray(body);
+
+const validateUpdateUser = (body) => {
+    if (!isValidRequestBody(body)) {
+        return {
+            status: 400,
+            message: 'Datos no validos'
+        };
+    }
+
+    const allowedKeys = new Set(['email', 'password']);
+    const keys = Object.keys(body);
+
+    if (keys.some((key) => !allowedKeys.has(key))) {
+        return {
+            status: 400,
+            message: 'Solo se permite actualizar correo o contrasena'
+        };
+    }
+
+    const { email, password } = body;
+
+    if (email === undefined && password === undefined) {
+        return {
+            status: 400,
+            message: 'No hay campos validos para actualizar'
+        };
+    }
+
+    if (email !== undefined && !isValidEmail(email)) {
+        return {
+            status: 400,
+            message: 'Correo no valido'
+        };
+    }
+
+    if (
+        password !== undefined &&
+        (typeof password !== 'string' || password.length === 0)
+    ) {
+        return {
+            status: 400,
+            message: 'Contrasena no valida'
+        };
+    }
+
+    return null;
+};
+
 const getUser = async (req, res) => {
     if (!isValidId(req.params.id)) {
         return res.status(400).json({
@@ -82,7 +134,7 @@ const getAllMembers = async (_req, res) => {
 const addUser = async (req, res) => {
     const body = req.body;
 
-    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    if (!isValidRequestBody(body)) {
         return res.status(400).json({
             success: false,
             message: 'Datos de usuario no validos'
@@ -146,7 +198,7 @@ const addUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
     const { id } = req.params;
-    const body = req.body;
+
 
     if (!isValidId(id)) {
         return res.status(400).json({
@@ -154,48 +206,16 @@ const updateUser = async (req, res) => {
             message: 'ID de usuario no valido'
         });
     }
+    const validationError = validateUpdateUser(req.body);
 
-    if (!body || typeof body !== 'object' || Array.isArray(body)) {
-        return res.status(400).json({
+    if (validationError) {
+        return res.status(validationError.status).json({
             success: false,
-            message: 'Datos no validos'
+            message: validationError.message
         });
     }
 
-    const allowedKeys = ['email', 'password'];
-
-    if (Object.keys(body).some((key) => !allowedKeys.includes(key))) {
-        return res.status(400).json({
-            success: false,
-            message: 'Solo se permite actualizar correo o contrasena'
-        });
-    }
-
-    const { email, password } = body;
-
-    if (email === undefined && password === undefined) {
-        return res.status(400).json({
-            success: false,
-            message: 'No hay campos validos para actualizar'
-        });
-    }
-
-    if (email !== undefined && !isValidEmail(email)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Correo no valido'
-        });
-    }
-
-    if (
-        password !== undefined &&
-        (typeof password !== 'string' || password.length === 0)
-    ) {
-        return res.status(400).json({
-            success: false,
-            message: 'Contrasena no valida'
-        });
-    }
+    const { email, password } = req.body;
 
     try {
         const user = await User.findById(id);
