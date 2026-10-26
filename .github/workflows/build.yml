@@ -1,3 +1,4 @@
+
 name: Build
 
 on:
@@ -32,7 +33,10 @@ jobs:
       - name: Run tests and generate coverage
         working-directory: server
         run: npm test -- --coverage
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: "-Dsonar.javascript.lcov.reportPaths=server/coverage/lcov.info"
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
