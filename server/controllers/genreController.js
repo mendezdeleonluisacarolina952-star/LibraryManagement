@@ -1,15 +1,11 @@
-const mongoose = require('mongoose');
+
 const Genre = require('../models/genre');
 
-const ALLOWED_FIELDS = ['name', 'description'];
+const ALLOWED_FIELDS = Object.freeze(['name', 'description']);
 
-const isValidId = (id) => {
-    return (
-        typeof id === 'string' &&
-        mongoose.Types.ObjectId.isValid(id) &&
-        String(new mongoose.Types.ObjectId(id)) === id
-    );
-};
+const isValidId = (id) =>
+    typeof id === 'string' &&
+    /^[a-fA-F0-9]{24}$/.test(id);
 
 const getAllowedFields = (body) => {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -27,26 +23,35 @@ const getAllowedFields = (body) => {
     return data;
 };
 
-const validateGenreData = (data, isNew = false) => {
+const validateGenre = (data, creating = false) => {
     for (const field of ALLOWED_FIELDS) {
-        if (isNew || data[field] !== undefined) {
-            if (
+
+        if (
+            (creating || data[field] !== undefined) &&
+            (
                 typeof data[field] !== 'string' ||
                 !data[field].trim()
-            ) {
-                return `${ field } es obligatorio y debe ser texto`;
-            }
+            )
+        ) {
+            return `${field} es obligatorio y debe ser texto`;
         }
     }
-
     return null;
 };
 
-// Consultar genero por ID
-const getGenre = async (req, res) => {
-    const { id } = req.params;
+const normalizeGenre = (data) => {
+    const normalized = { ...data };
 
-    if (!isValidId(id)) {
+    for (const field of ALLOWED_FIELDS) {
+        if (typeof normalized[field] === 'string') {
+            normalized[field] = normalized[field].trim();
+        }
+    }
+
+    return normalized;
+};
+const getGenre = async (req, res) => {
+    if (!req.params || !isValidId(req.params.id)) {
         return res.status(400).json({
             success: false,
             message: 'ID de genero no valido'
@@ -54,7 +59,7 @@ const getGenre = async (req, res) => {
     }
 
     try {
-        const genre = await Genre.findById(id);
+        const genre = await Genre.findById(req.params.id);
 
         if (!genre) {
             return res.status(404).json({
@@ -67,16 +72,15 @@ const getGenre = async (req, res) => {
             success: true,
             genre
         });
-    } catch (err) {
-        return res.status(400).json({
+    } catch {
+        return res.status(500).json({
             success: false,
             message: 'No se pudo consultar el genero'
         });
     }
 };
 
-// Consultar todos los generos
-const getAllGenres = async (req, res) => {
+const getAllGenres = async (_req, res) => {
     try {
         const genres = await Genre.find({});
 
@@ -84,7 +88,7 @@ const getAllGenres = async (req, res) => {
             success: true,
             genresList: genres
         });
-    } catch (err) {
+    } catch {
         return res.status(500).json({
             success: false,
             message: 'No se pudieron consultar los generos'
@@ -92,37 +96,36 @@ const getAllGenres = async (req, res) => {
     }
 };
 
-// Crear genero
-const addGenre = async (req, res) => {
-    const newGenre = getAllowedFields(req.body);
 
-    if (!newGenre) {
+const addGenre = async (req, res) => {
+    const data = getAllowedFields(req.body);
+
+    if (!data) {
         return res.status(400).json({
             success: false,
             message: 'Datos del genero no validos'
         });
     }
 
-    const validationError = validateGenreData(newGenre, true);
+    const error = validateGenre(data, true);
 
-    if (validationError) {
+    if (error) {
         return res.status(400).json({
             success: false,
-            message: validationError
+            message: error
         });
     }
 
-    newGenre.name = newGenre.name.trim();
-    newGenre.description = newGenre.description.trim();
+    const normalizedData = normalizeGenre(data);
 
     try {
-        const genre = await Genre.create(newGenre);
+        const newGenre = await Genre.create(normalizedData);
 
-        return res.status(200).json({
+        return res.status(201).json({
             success: true,
-            newGenre: genre
+            newGenre
         });
-    } catch (err) {
+    } catch {
         return res.status(400).json({
             success: false,
             message: 'No se pudo registrar el genero'
@@ -130,10 +133,10 @@ const addGenre = async (req, res) => {
     }
 };
 
-// Actualizar genero
+
 const updateGenre = async (req, res) => {
-    const { id } = req.params;
-    const updatedGenre = getAllowedFields(req.body);
+    const id = req.params && req.params.id;
+    const data = getAllowedFields(req.body);
 
     if (!isValidId(id)) {
         return res.status(400).json({
@@ -142,33 +145,32 @@ const updateGenre = async (req, res) => {
         });
     }
 
-    if (!updatedGenre || Object.keys(updatedGenre).length === 0) {
+    if (!data || Object.keys(data).length === 0) {
         return res.status(400).json({
             success: false,
             message: 'No hay campos validos para actualizar'
         });
     }
 
-    const validationError = validateGenreData(updatedGenre);
+    const error = validateGenre(data);
 
-    if (validationError) {
+    if (error) {
         return res.status(400).json({
             success: false,
-            message: validationError
+            message: error
         });
     }
 
-    for (const field of ALLOWED_FIELDS) {
-        if (updatedGenre[field] !== undefined) {
-            updatedGenre[field] = updatedGenre[field].trim();
-        }
-    }
+    const normalizedData = normalizeGenre(data);
 
     try {
         const genre = await Genre.findByIdAndUpdate(
             id,
-            { $set: updatedGenre },
-            { new: true, runValidators: true }
+            { $set: normalizedData },
+            {
+                new: true,
+                runValidators: true
+            }
         );
 
         if (!genre) {
@@ -182,7 +184,7 @@ const updateGenre = async (req, res) => {
             success: true,
             updatedGenre: genre
         });
-    } catch (err) {
+    } catch {
         return res.status(400).json({
             success: false,
             message: 'No se pudo actualizar el genero'
@@ -190,11 +192,9 @@ const updateGenre = async (req, res) => {
     }
 };
 
-// Eliminar genero
-const deleteGenre = async (req, res) => {
-    const { id } = req.params;
 
-    if (!isValidId(id)) {
+const deleteGenre = async (req, res) => {
+    if (!req.params || !isValidId(req.params.id)) {
         return res.status(400).json({
             success: false,
             message: 'ID de genero no valido'
@@ -202,7 +202,7 @@ const deleteGenre = async (req, res) => {
     }
 
     try {
-        const genre = await Genre.findByIdAndDelete(id);
+        const genre = await Genre.findByIdAndDelete(req.params.id);
 
         if (!genre) {
             return res.status(404).json({
@@ -215,8 +215,8 @@ const deleteGenre = async (req, res) => {
             success: true,
             deletedGenre: genre
         });
-    } catch (err) {
-        return res.status(400).json({
+    } catch {
+        return res.status(500).json({
             success: false,
             message: 'No se pudo eliminar el genero'
         });

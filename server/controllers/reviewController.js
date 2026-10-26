@@ -1,15 +1,11 @@
+
 const mongoose = require('mongoose');
 const Review = require('../models/review');
 
 const ALLOWED_FIELDS = ['bookID', 'star', 'rating'];
 
-const isValidId = (id) => {
-    return (
-        typeof id === 'string' &&
-        mongoose.Types.ObjectId.isValid(id) &&
-        String(new mongoose.Types.ObjectId(id)) === id
-    );
-};
+const isValidId = (id) =>
+    typeof id === 'string' && /^[a-fA-F0-9]{24}$/.test(id);
 
 const getAllowedFields = (body) => {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -27,44 +23,31 @@ const getAllowedFields = (body) => {
     return data;
 };
 
-const validateReviewData = (data, isNew = false) => {
+const validateReview = (data, creating = false) => {
     if (
-        isNew &&
-        (typeof data.bookID !== 'string' || !isValidId(data.bookID))
+        (creating || data.bookID !== undefined) &&
+        !isValidId(data.bookID)
     ) {
         return 'bookID debe ser un ID valido';
     }
-
-    if (data.bookID !== undefined && !isValidId(data.bookID)) {
-        return 'bookID debe ser un ID valido';
+    if (
+        (creating || data.star !== undefined) &&
+        (typeof data.star !== 'string' || !data.star.trim())
+    ) {
+        return 'star es obligatorio y debe ser texto';
     }
 
     if (
-        isNew &&
-        (typeof data.star !== 'string' || !data.star.trim())
+        data.rating !== undefined &&
+        typeof data.rating !== 'string'
     ) {
-        return 'star es obligatorio';
-    }
-
-    if (
-        data.star !== undefined &&
-        (typeof data.star !== 'string' || !data.star.trim())
-    ) {
-        return 'star debe ser texto no vacio';
-    }
-
-    if (data.rating !== undefined && typeof data.rating !== 'string') {
         return 'rating debe ser texto';
     }
 
     return null;
 };
-
-// Consultar resena por ID
 const getReview = async (req, res) => {
-    const { id } = req.params;
-
-    if (!isValidId(id)) {
+    if (!isValidId(req.params.id)) {
         return res.status(400).json({
             success: false,
             message: 'ID de resena no valido'
@@ -72,7 +55,7 @@ const getReview = async (req, res) => {
     }
 
     try {
-        const review = await Review.findById(id);
+        const review = await Review.findById(req.params.id);
 
         if (!review) {
             return res.status(404).json({
@@ -85,7 +68,7 @@ const getReview = async (req, res) => {
             success: true,
             review
         });
-    } catch (err) {
+    } catch {
         return res.status(500).json({
             success: false,
             message: 'Error al consultar la resena'
@@ -93,8 +76,7 @@ const getReview = async (req, res) => {
     }
 };
 
-// Consultar todas las resenas
-const getAllReviews = async (req, res) => {
+const getAllReviews = async (_req, res) => {
     try {
         const reviews = await Review.find({});
 
@@ -102,7 +84,7 @@ const getAllReviews = async (req, res) => {
             success: true,
             reviewsList: reviews
         });
-    } catch (err) {
+    } catch {
         return res.status(500).json({
             success: false,
             message: 'Error al consultar las resenas'
@@ -110,44 +92,41 @@ const getAllReviews = async (req, res) => {
     }
 };
 
-// Crear resena
-const addReview = async (req, res) => {
-    const newReview = getAllowedFields(req.body);
 
-    if (!newReview) {
+const addReview = async (req, res) => {
+    const data = getAllowedFields(req.body);
+
+    if (!data) {
         return res.status(400).json({
             success: false,
             message: 'Datos de resena no validos'
         });
     }
 
-    const validationError = validateReviewData(newReview, true);
+    const error = validateReview(data, true);
 
-    if (validationError) {
+    if (error) {
         return res.status(400).json({
             success: false,
-            message: validationError
+            message: error
         });
     }
 
+    data.bookID = new mongoose.Types.ObjectId(data.bookID);
+    data.star = data.star.trim();
+
+    if (typeof data.rating === 'string') {
+        data.rating = data.rating.trim();
+    }
+
     try {
-        const reviewData = {
-            ...newReview,
-            bookID: new mongoose.Types.ObjectId(newReview.bookID),
-            star: newReview.star.trim()
-        };
+        const newReview = await Review.create(data);
 
-        if (typeof reviewData.rating === 'string') {
-            reviewData.rating = reviewData.rating.trim();
-        }
-
-        const review = await Review.create(reviewData);
-
-        return res.status(200).json({
+        return res.status(201).json({
             success: true,
-            newReview: review
+            newReview
         });
-    } catch (err) {
+    } catch {
         return res.status(400).json({
             success: false,
             message: 'No se pudo registrar la resena'
@@ -155,10 +134,10 @@ const addReview = async (req, res) => {
     }
 };
 
-// Actualizar resena
+
 const updateReview = async (req, res) => {
     const { id } = req.params;
-    const updatedReview = getAllowedFields(req.body);
+    const data = getAllowedFields(req.body);
 
     if (!isValidId(id)) {
         return res.status(400).json({
@@ -167,40 +146,38 @@ const updateReview = async (req, res) => {
         });
     }
 
-    if (!updatedReview || Object.keys(updatedReview).length === 0) {
+    if (!data || Object.keys(data).length === 0) {
         return res.status(400).json({
             success: false,
             message: 'No hay campos validos para actualizar'
         });
     }
 
-    const validationError = validateReviewData(updatedReview);
+    const error = validateReview(data);
 
-    if (validationError) {
+    if (error) {
         return res.status(400).json({
             success: false,
-            message: validationError
+            message: error
         });
     }
 
-    if (updatedReview.bookID !== undefined) {
-        updatedReview.bookID = new mongoose.Types.ObjectId(
-            updatedReview.bookID
-        );
+    if (data.bookID !== undefined) {
+        data.bookID = new mongoose.Types.ObjectId(data.bookID);
     }
 
-    if (typeof updatedReview.star === 'string') {
-        updatedReview.star = updatedReview.star.trim();
-    }
+    for (const field of ['star', 'rating']) {
+        if (typeof data[field] === 'string') {
+            data[field] = data[field].trim();
+        }
 
-    if (typeof updatedReview.rating === 'string') {
-        updatedReview.rating = updatedReview.rating.trim();
+
     }
 
     try {
         const review = await Review.findByIdAndUpdate(
             id,
-            { $set: updatedReview },
+            { $set: data },
             { new: true, runValidators: true }
         );
 
@@ -215,7 +192,7 @@ const updateReview = async (req, res) => {
             success: true,
             updatedReview: review
         });
-    } catch (err) {
+    } catch {
         return res.status(400).json({
             success: false,
             message: 'No se pudo actualizar la resena'
@@ -223,11 +200,9 @@ const updateReview = async (req, res) => {
     }
 };
 
-// Eliminar resena
-const deleteReview = async (req, res) => {
-    const { id } = req.params;
 
-    if (!isValidId(id)) {
+const deleteReview = async (req, res) => {
+    if (!isValidId(req.params.id)) {
         return res.status(400).json({
             success: false,
             message: 'ID de resena no valido'
@@ -235,7 +210,7 @@ const deleteReview = async (req, res) => {
     }
 
     try {
-        const review = await Review.findByIdAndDelete(id);
+        const review = await Review.findByIdAndDelete(req.params.id);
 
         if (!review) {
             return res.status(404).json({
@@ -248,7 +223,7 @@ const deleteReview = async (req, res) => {
             success: true,
             deletedReview: review
         });
-    } catch (err) {
+    } catch {
         return res.status(500).json({
             success: false,
             message: 'Error al eliminar la resena'

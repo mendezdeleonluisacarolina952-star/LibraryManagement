@@ -1,5 +1,5 @@
 
-const mongoose = require('mongoose');
+
 const Member = require('../models/member');
 
 const ALLOWED_FIELDS = [
@@ -13,84 +13,107 @@ const ALLOWED_FIELDS = [
     'photoUrl'
 ];
 
-const isValidId = (id) => {
-    return (
-        typeof id === 'string' &&
-        mongoose.Types.ObjectId.isValid(id) &&
-        String(new mongoose.Types.ObjectId(id)) === id
-    );
-};
+const NUMERIC_FIELDS = ['nic', 'phone'];
+const TEXT_FIELDS = [
+    'memberName',
+    'address',
+    'occupation',
+    'status',
+    'email',
+    'photoUrl'
+];
+const OPTIONAL_TEXT_FIELDS = [
+    'address',
+    'occupation',
+    'status',
+    'email',
+    'photoUrl'
+];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ID_REGEX = /^[a-fA-F0-9]{24}$/;
+const INTEGER_REGEX = /^\d+$/;
+
+const isValidId = (id) =>
+    typeof id === 'string' && ID_REGEX.test(id);
+
+const respondError = (res, status, message) =>
+    res.status(status).json({
+        success: false,
+        message
+    });
 
 const getAllowedFields = (body) => {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
         return null;
     }
 
-    const data = {};
-
-    for (const field of ALLOWED_FIELDS) {
+    return ALLOWED_FIELDS.reduce((data, field) => {
         if (Object.prototype.hasOwnProperty.call(body, field)) {
             data[field] = body[field];
-        }
-    }
-
-    return data;
+        } return data;
+    }, {});
 };
 
-const validateMemberData = (data, isNew = false) => {
+const validateMemberName = (data, creating) => {
     if (
-        isNew &&
-        (typeof data.memberName !== 'string' || !data.memberName.trim())
+        (creating || data.memberName !== undefined) &&
+        (
+            typeof data.memberName !== 'string' ||
+            !data.memberName.trim()
+        )
     ) {
-        return 'memberName es obligatorio';
+        return 'memberName es obligatorio y debe ser texto';
     }
 
-    if (
-        isNew &&
-        (data.nic === undefined || data.nic === null || data.nic === '')
-    ) {
-        return 'nic es obligatorio';
-    }
+    return null;
+};
 
-    if (
-        isNew &&
-        (data.phone === undefined || data.phone === null || data.phone === '')
-    ) {
-        return 'phone es obligatorio';
-    }
+const validateNumericFields = (data, creating) => {
+    for (const field of NUMERIC_FIELDS) {
+        const value = data[field];
 
-    if (
-        data.memberName !== undefined &&
-        (typeof data.memberName !== 'string' || !data.memberName.trim())
-    ) {
-        return 'memberName debe ser texto';
-    }
-
-    for (const field of ['address', 'occupation', 'status', 'email', 'photoUrl']) {
-        if (data[field] !== undefined && typeof data[field] !== 'string') {
-            return `${field} debe ser texto`;
+        if (value === undefined && !creating) {
+            continue;
         }
-    }
 
-    for (const field of ['nic', 'phone']) {
         if (
-            data[field] !== undefined &&
-            (!Number.isSafeInteger(Number(data[field])) ||
-                data[field] === '' ||
-                data[field] === null)
+            value === undefined ||
+            value === null ||
+            value === '' ||
+            !INTEGER_REGEX.test(String(value)) ||
+            !Number.isSafeInteger(Number(value))
         ) {
             return `${field} debe ser un numero entero valido`;
         }
 
-        if (data[field] !== undefined) {
-            data[field] = Number(data[field]);
+        data[field] = Number(value);
+    }
+    return null;
+};
+
+const validateTextFields = (data) => {
+    for (const field of TEXT_FIELDS) {
+        if (
+            data[field] !== undefined &&
+            typeof data[field] !== 'string'
+        ) {
+            return `${field} debe ser texto`;
         }
     }
 
+
+
+
+    return null;
+};
+
+const validateEmail = (data) => {
+    const email = data.email;
+
     if (
-        data.email !== undefined &&
-        data.email.trim() !== '' &&
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())
+        email !== undefined &&
+        email.trim() !== '' &&
+        !EMAIL_REGEX.test(email.trim())
     ) {
         return 'Correo electronico no valido';
     }
@@ -98,191 +121,180 @@ const validateMemberData = (data, isNew = false) => {
     return null;
 };
 
-// Consultar miembro por ID
+const validateMember = (data, creating = false) =>
+    validateMemberName(data, creating) ||
+    validateNumericFields(data, creating) ||
+    validateTextFields(data) ||
+    validateEmail(data);
+
+const normalizeMemberData = (data) => {
+    const normalized = { ...data };
+
+    for (const field of TEXT_FIELDS) {
+        if (typeof normalized[field] === 'string') {
+            normalized[field] = normalized[field].trim();
+        }
+    }
+
+    if (typeof normalized.email === 'string') {
+        normalized.email = normalized.email.toLowerCase();
+    }
+
+    return normalized;
+};
+
 const getMember = async (req, res) => {
     const { id } = req.params;
 
     if (!isValidId(id)) {
-        return res.status(400).json({
-            success: false,
-            message: 'ID de miembro no valido'
-        });
+        return respondError(res, 400, 'ID de miembro no valido');
     }
 
     try {
         const member = await Member.findById(id);
 
         if (!member) {
-            return res.status(404).json({
-                success: false,
-                message: 'Miembro no encontrado'
-            });
+            return respondError(res, 404, 'Miembro no encontrado');
         }
 
         return res.status(200).json({
             success: true,
             member
         });
-    } catch (err) {
-        return res.status(500).json({
-            success: false,
-            message: 'Error al consultar el miembro'
-        });
+    } catch {
+        return respondError(
+            res,
+            500,
+            'Error al consultar el miembro'
+        );
     }
 };
 
-// Consultar todos los miembros
-const getAllMembers = async (req, res) => {
+const getAllMembers = async (_req, res) => {
     try {
-        const members = await Member.find({});
+        const membersList = await Member.find({});
 
         return res.status(200).json({
             success: true,
-            membersList: members
+            membersList
         });
-    } catch (err) {
-        return res.status(500).json({
-            success: false,
-            message: 'Error al consultar los miembros'
-        });
+    } catch {
+        return respondError(
+            res,
+            500,
+            'Error al consultar los miembros'
+        );
     }
 };
 
-// Registrar miembro
-const addMember = async (req, res) => {
-    const newMember = getAllowedFields(req.body);
 
-    if (!newMember) {
-        return res.status(400).json({
-            success: false,
-            message: 'Datos de miembro no validos'
-        });
+const addMember = async (req, res) => {
+    const data = getAllowedFields(req.body);
+
+    if (!data) {
+        return respondError(
+            res,
+            400,
+            'Datos de miembro no validos'
+        );
     }
 
-    const validationError = validateMemberData(newMember, true);
+    const validationError = validateMember(data, true);
 
     if (validationError) {
-        return res.status(400).json({
-            success: false,
-            message: validationError
-        });
-    }
-
-    if (typeof newMember.memberName === 'string') {
-        newMember.memberName = newMember.memberName.trim();
-    }
-
-    if (typeof newMember.email === 'string') {
-        newMember.email = newMember.email.trim().toLowerCase();
+        return respondError(res, 400, validationError);
     }
 
     try {
-        const member = await Member.create(newMember);
+        const newMember = await Member.create(
+            normalizeMemberData(data)
+        );
 
-        return res.status(200).json({
+        return res.status(201).json({
             success: true,
-            newMember: member
+            newMember
         });
-    } catch (err) {
-        return res.status(400).json({
-            success: false,
-            message: 'No se pudo registrar el miembro'
-        });
+    } catch {
+        return respondError(
+            res,
+            400,
+            'No se pudo registrar el miembro'
+        );
     }
 };
 
-// Actualizar miembro
+
 const updateMember = async (req, res) => {
     const { id } = req.params;
-    const updatedMember = getAllowedFields(req.body);
+    const data = getAllowedFields(req.body);
 
     if (!isValidId(id)) {
-        return res.status(400).json({
-            success: false,
-            message: 'ID de miembro no valido'
-        });
+        return respondError(res, 400, 'ID de miembro no valido');
     }
 
-    if (!updatedMember || Object.keys(updatedMember).length === 0) {
-        return res.status(400).json({
-            success: false,
-            message: 'No hay campos validos para actualizar'
-        });
+    if (!data || Object.keys(data).length === 0) {
+        return respondError(
+            res,
+            400,
+            'No hay campos validos para actualizar'
+        );
     }
 
-    const validationError = validateMemberData(updatedMember);
+    const validationError = validateMember(data);
 
     if (validationError) {
-        return res.status(400).json({
-            success: false,
-            message: validationError
-        });
-    }
-
-    if (typeof updatedMember.memberName === 'string') {
-        updatedMember.memberName = updatedMember.memberName.trim();
-    }
-
-    if (typeof updatedMember.email === 'string') {
-        updatedMember.email = updatedMember.email.trim().toLowerCase();
+        return respondError(res, 400, validationError);
     }
 
     try {
-        const member = await Member.findByIdAndUpdate(
+        const updatedMember = await Member.findByIdAndUpdate(
             id,
-            { $set: updatedMember },
+            { $set: normalizeMemberData(data) },
             { new: true, runValidators: true }
         );
 
-        if (!member) {
-            return res.status(404).json({
-                success: false,
-                message: 'Miembro no encontrado'
-            });
+        if (!updatedMember) {
+            return respondError(res, 404, 'Miembro no encontrado');
         }
 
         return res.status(200).json({
             success: true,
-            updatedMember: member
+            updatedMember
         });
-    } catch (err) {
-        return res.status(400).json({
-            success: false,
-            message: 'No se pudo actualizar el miembro'
-        });
+    } catch {
+        return respondError(
+            res,
+            400,
+            'No se pudo actualizar el miembro'
+        );
     }
 };
 
-// Eliminar miembro
+
 const deleteMember = async (req, res) => {
     const { id } = req.params;
 
     if (!isValidId(id)) {
-        return res.status(400).json({
-            success: false,
-            message: 'ID de miembro no valido'
-        });
+        return respondError(res, 400, 'ID de miembro no valido');
     }
 
     try {
-        const member = await Member.findByIdAndDelete(id);
+        const deletedMember = await Member.findByIdAndDelete(id);
 
-        if (!member) {
-            return res.status(404).json({
-                success: false,
-                message: 'Miembro no encontrado'
-            });
+        if (!deletedMember) {
+            return respondError(res, 404, 'Miembro no encontrado');
         }
 
         return res.status(200).json({
             success: true,
-            deletedMember: member
+            deletedMember
         });
-    } catch (err) {
-        return res.status(500).json({
-            success: false,
-            message: 'Error al eliminar el miembro'
-        });
+    } catch {
+        return respondError(
+            res,
+            500,
+            'Error al eliminar el miembro'
+        );
     }
 };
 

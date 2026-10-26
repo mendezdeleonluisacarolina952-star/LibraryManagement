@@ -1,15 +1,15 @@
-const mongoose = require('mongoose');
+
 const Author = require('../models/author');
 
-const ALLOWED_FIELDS = ['name', 'description', 'photoUrl'];
+const ALLOWED_FIELDS = Object.freeze([
+    'name',
+    'description',
+    'photoUrl'
+]);
 
-const isValidId = (id) => {
-    return (
-        typeof id === 'string' &&
-        mongoose.Types.ObjectId.isValid(id) &&
-        String(new mongoose.Types.ObjectId(id)) === id
-    );
-};
+const isValidId = (id) =>
+    typeof id === 'string' &&
+    /^[a-fA-F0-9]{24}$/.test(id);
 
 const getAllowedFields = (body) => {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -27,11 +27,43 @@ const getAllowedFields = (body) => {
     return data;
 };
 
-// Consultar autor por ID
-const getAuthor = async (req, res) => {
-    const { id } = req.params;
+const validateAuthor = (data, creating = false) => {
+    if (
+        (creating || data.name !== undefined) &&
+        (
+            typeof data.name !== 'string' ||
+            !data.name.trim()
+        )
+    ) {
+        return 'El nombre del autor es obligatorio';
+    }
 
-    if (!isValidId(id)) {
+    for (const field of ['description', 'photoUrl']) {
+        if (
+            data[field] !== undefined &&
+            typeof data[field] !== 'string'
+        ) {
+            return `${field} debe ser texto`;
+        }
+    }
+
+    return null;
+};
+
+const normalizeAuthor = (data) => {
+    const normalized = { ...data };
+
+    for (const field of ['name', 'description', 'photoUrl']) {
+        if (typeof normalized[field] === 'string') {
+            normalized[field] = normalized[field].trim();
+        }
+    }
+
+    return normalized;
+};
+
+const getAuthor = async (req, res) => {
+    if (!req.params || !isValidId(req.params.id)) {
         return res.status(400).json({
             success: false,
             message: 'ID de autor no valido'
@@ -39,7 +71,7 @@ const getAuthor = async (req, res) => {
     }
 
     try {
-        const author = await Author.findById(id);
+        const author = await Author.findById(req.params.id);
 
         if (!author) {
             return res.status(404).json({
@@ -52,16 +84,15 @@ const getAuthor = async (req, res) => {
             success: true,
             author
         });
-    } catch (err) {
-        return res.status(400).json({
+    } catch {
+        return res.status(500).json({
             success: false,
             message: 'No se pudo consultar el autor'
         });
     }
 };
 
-// Consultar todos los autores
-const getAllAuthors = async (req, res) => {
+const getAllAuthors = async (_req, res) => {
     try {
         const authors = await Author.find({});
 
@@ -69,7 +100,7 @@ const getAllAuthors = async (req, res) => {
             success: true,
             authorsList: authors
         });
-    } catch (err) {
+    } catch {
         return res.status(500).json({
             success: false,
             message: 'No se pudieron consultar los autores'
@@ -77,51 +108,36 @@ const getAllAuthors = async (req, res) => {
     }
 };
 
-// Crear autor
+
 const addAuthor = async (req, res) => {
-    const newAuthor = getAllowedFields(req.body);
+    const data = getAllowedFields(req.body);
 
-    if (
-        !newAuthor ||
-        typeof newAuthor.name !== 'string' ||
-        !newAuthor.name.trim()
-    ) {
+    if (!data) {
         return res.status(400).json({
             success: false,
-            message: 'El nombre del autor es obligatorio'
+            message: 'Datos del autor no validos'
         });
     }
 
-    newAuthor.name = newAuthor.name.trim();
+    const error = validateAuthor(data, true);
 
-    if (
-        newAuthor.description !== undefined &&
-        typeof newAuthor.description !== 'string'
-    ) {
+    if (error) {
         return res.status(400).json({
             success: false,
-            message: 'La descripcion debe ser texto'
+            message: error
         });
     }
 
-    if (
-        newAuthor.photoUrl !== undefined &&
-        typeof newAuthor.photoUrl !== 'string'
-    ) {
-        return res.status(400).json({
-            success: false,
-            message: 'La URL de la foto debe ser texto'
-        });
-    }
+    const normalizedData = normalizeAuthor(data);
 
     try {
-        const author = await Author.create(newAuthor);
+        const newAuthor = await Author.create(normalizedData);
 
-        return res.status(200).json({
+        return res.status(201).json({
             success: true,
-            newAuthor: author
+            newAuthor
         });
-    } catch (err) {
+    } catch {
         return res.status(400).json({
             success: false,
             message: 'No se pudo registrar el autor'
@@ -129,10 +145,10 @@ const addAuthor = async (req, res) => {
     }
 };
 
-// Actualizar autor
+
 const updateAuthor = async (req, res) => {
-    const { id } = req.params;
-    const updatedAuthor = getAllowedFields(req.body);
+    const id = req.params && req.params.id;
+    const data = getAllowedFields(req.body);
 
     if (!isValidId(id)) {
         return res.status(400).json({
@@ -141,52 +157,32 @@ const updateAuthor = async (req, res) => {
         });
     }
 
-    if (!updatedAuthor || Object.keys(updatedAuthor).length === 0) {
+    if (!data || Object.keys(data).length === 0) {
         return res.status(400).json({
             success: false,
             message: 'No hay campos validos para actualizar'
         });
     }
 
-    if (updatedAuthor.name !== undefined) {
-        if (
-            typeof updatedAuthor.name !== 'string' ||
-            !updatedAuthor.name.trim()
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: 'El nombre del autor no es valido'
-            });
-        }
+    const error = validateAuthor(data);
 
-        updatedAuthor.name = updatedAuthor.name.trim();
-    }
-
-    if (
-        updatedAuthor.description !== undefined &&
-        typeof updatedAuthor.description !== 'string'
-    ) {
+    if (error) {
         return res.status(400).json({
             success: false,
-            message: 'La descripcion debe ser texto'
+            message: error
         });
     }
 
-    if (
-        updatedAuthor.photoUrl !== undefined &&
-        typeof updatedAuthor.photoUrl !== 'string'
-    ) {
-        return res.status(400).json({
-            success: false,
-            message: 'La URL de la foto debe ser texto'
-        });
-    }
+    const normalizedData = normalizeAuthor(data);
 
     try {
         const author = await Author.findByIdAndUpdate(
             id,
-            { $set: updatedAuthor },
-            { new: true, runValidators: true }
+            { $set: normalizedData },
+            {
+                new: true,
+                runValidators: true
+            }
         );
 
         if (!author) {
@@ -200,7 +196,7 @@ const updateAuthor = async (req, res) => {
             success: true,
             updatedAuthor: author
         });
-    } catch (err) {
+    } catch {
         return res.status(400).json({
             success: false,
             message: 'No se pudo actualizar el autor'
@@ -208,11 +204,9 @@ const updateAuthor = async (req, res) => {
     }
 };
 
-// Eliminar autor
-const deleteAuthor = async (req, res) => {
-    const { id } = req.params;
 
-    if (!isValidId(id)) {
+const deleteAuthor = async (req, res) => {
+    if (!req.params || !isValidId(req.params.id)) {
         return res.status(400).json({
             success: false,
             message: 'ID de autor no valido'
@@ -220,7 +214,7 @@ const deleteAuthor = async (req, res) => {
     }
 
     try {
-        const author = await Author.findByIdAndDelete(id);
+        const author = await Author.findByIdAndDelete(req.params.id);
 
         if (!author) {
             return res.status(404).json({
@@ -233,8 +227,8 @@ const deleteAuthor = async (req, res) => {
             success: true,
             deletedAuthor: author
         });
-    } catch (err) {
-        return res.status(400).json({
+    } catch {
+        return res.status(500).json({
             success: false,
             message: 'No se pudo eliminar el autor'
         });

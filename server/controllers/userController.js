@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+
 const User = require('../models/user');
 
 const isValidEmail = (email) =>
@@ -6,7 +6,8 @@ const isValidEmail = (email) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
 const isValidId = (id) =>
-    typeof id === 'string' && /^[a-fA-F0-9]{24}$/.test(id);
+    typeof id === 'string' &&
+    /^[a-fA-F0-9]{24}$/.test(id);
 
 const publicUser = (user) => ({
     id: user._id,

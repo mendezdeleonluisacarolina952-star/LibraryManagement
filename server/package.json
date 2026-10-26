@@ -19,6 +19,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
     "dev": "nodemon index.js",
     "start": "node index.js"
   },
