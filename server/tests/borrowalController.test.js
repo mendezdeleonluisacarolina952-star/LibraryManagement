@@ -25,13 +25,15 @@ const mongoose = require('mongoose');
 const Borrowal = require('../models/borrowal');
 const Book = require('../models/book');
 
+const borrowalController = require('../controllers/borrowalController');
+
 const {
     getBorrowal,
     getAllBorrowals,
     addBorrowal,
     updateBorrowal,
     deleteBorrowal
-} = require('../controllers/borrowalController');
+} = borrowalController;
 
 const createResponse = () => {
     const res = {};
@@ -194,11 +196,13 @@ describe('borrowalController', () => {
                 }],
                 { session }
             );
+
             expect(Book.findByIdAndUpdate).toHaveBeenCalledWith(
                 bookId,
                 { $set: { isAvailable: false } },
                 { new: true, session }
             );
+
             expect(res.status).toHaveBeenCalledWith(201);
             expect(session.endSession).toHaveBeenCalled();
         });
@@ -317,11 +321,14 @@ describe('borrowalController', () => {
                 { $set: { memberId: new mongoose.Types.ObjectId(bookId) } },
                 { new: true, runValidators: true }
             );
+
             expect(res.status).toHaveBeenCalledWith(200);
         });
 
         test('returns 400 when update fails', async () => {
-            Borrowal.findByIdAndUpdate.mockRejectedValue(new Error('Database error'));
+            Borrowal.findByIdAndUpdate.mockRejectedValue(
+                new Error('Database error')
+            );
 
             await updateBorrowal({
                 params: { id: validId },
@@ -364,11 +371,14 @@ describe('borrowalController', () => {
                 { $set: { isAvailable: true } },
                 { runValidators: true }
             );
+
             expect(res.status).toHaveBeenCalledWith(200);
         });
 
         test('returns 500 when deletion fails', async () => {
-            Borrowal.findByIdAndDelete.mockRejectedValue(new Error('Database error'));
+            Borrowal.findByIdAndDelete.mockRejectedValue(
+                new Error('Database error')
+            );
 
             await deleteBorrowal({ params: { id: validId } }, res);
 
@@ -380,7 +390,9 @@ describe('borrowalController', () => {
                 bookId: new mongoose.Types.ObjectId(bookId)
             });
 
-            Book.findByIdAndUpdate.mockRejectedValue(new Error('Database error'));
+            Book.findByIdAndUpdate.mockRejectedValue(
+                new Error('Database error')
+            );
 
             await deleteBorrowal({ params: { id: validId } }, res);
 
