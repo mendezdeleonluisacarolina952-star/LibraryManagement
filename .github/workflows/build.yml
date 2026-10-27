@@ -1,5 +1,5 @@
 
-name: Build
+name: Build and SonarCloud Analysis
 
 on:
   push:
@@ -8,18 +8,19 @@ on:
   pull_request:
     branches:
       - DEV
-    types: [opened, synchronize, reopened]
+
+
 
 permissions:
   contents: read
 
 jobs:
-  sonarqube:
-    name: SonarQube
+  build:
+    name: Tests and SonarCloud
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
@@ -39,10 +40,49 @@ jobs:
         working-directory: server
         run: npm test -- --coverage
 
-      - name: SonarQube Scan
+      - name: Normalize LCOV paths
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const reportPath = 'server/coverage/lcov.info';
+
+          if (!fs.existsSync(reportPath)) {
+            console.error(`Coverage report not found: ${reportPath}`);
+            process.exit(1);
+          }
+
+          let report = fs.readFileSync(reportPath, 'utf8');
+
+          report = report.replace(
+            /^SF:(?:\.?[\\/])?controllers[\\/]/gm,
+            'SF:server/controllers/'
+          );
+
+          report = report.replace(
+            /^SF:(?:\.?[\\/])?models[\\/]/gm,
+            'SF:server/models/'
+          );
+
+          report = report.replace(/\\/g, '/');
+
+          fs.writeFileSync(reportPath, report);
+
+          console.log('Normalized LCOV source paths:');
+          console.log(
+            report
+              .split(/\r?\n/)
+              .filter(line => line.startsWith('SF:'))
+              .join('\n')
+          );
+          NODE
+
+      - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@016cabf33a6b7edf0733e179a03ad408ad4e88ba # patched v5.3.1
         with:
-          args: "-Dsonar.javascript.lcov.reportPaths=server/coverage/lcov.info"
+          args: >
+            -Dsonar.javascript.lcov.reportPaths=server/coverage/lcov.info
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
 
