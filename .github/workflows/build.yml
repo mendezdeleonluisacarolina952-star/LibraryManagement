@@ -34,13 +34,14 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: server
-        run: npm ci --ignore-scripts
+        run: npm ci
 
       - name: Run tests and generate coverage
         working-directory: server
         run: npm test -- --coverage
 
       - name: Normalize LCOV paths
+        shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -48,33 +49,35 @@ jobs:
           const reportPath = 'server/coverage/lcov.info';
 
           if (!fs.existsSync(reportPath)) {
-            console.error(`Coverage report not found: ${reportPath}`);
-            process.exit(1);
+            throw new Error(`Coverage report not found: ${reportPath}`);
           }
 
           let report = fs.readFileSync(reportPath, 'utf8');
 
+          report = report.replace(/\\/g, '/');
+
           report = report.replace(
-            /^SF:(?:\.?[\\/])?controllers[\\/]/gm,
+            /^SF:(?:\.\/)?(?:server\/)?controllers\//gm,
             'SF:server/controllers/'
           );
 
           report = report.replace(
-            /^SF:(?:\.?[\\/])?models[\\/]/gm,
+            /^SF:(?:\.\/)?(?:server\/)?models\//gm,
             'SF:server/models/'
           );
 
-          report = report.replace(/\\/g, '/');
-
           fs.writeFileSync(reportPath, report);
 
+          const sourceFiles = report
+            .split(/\r?\n/)
+            .filter(line => line.startsWith('SF:'));
+
           console.log('Normalized LCOV source paths:');
-          console.log(
-            report
-              .split(/\r?\n/)
-              .filter(line => line.startsWith('SF:'))
-              .join('\n')
-          );
+          console.log(sourceFiles.join('\n'));
+
+          if (sourceFiles.length === 0) {
+            throw new Error('The LCOV report contains no source files.');
+          }
           NODE
 
       - name: SonarCloud Scan
