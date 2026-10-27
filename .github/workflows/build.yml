@@ -80,12 +80,19 @@ jobs:
           }
           NODE
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@016cabf33a6b7edf0733e179a03ad408ad4e88ba # patched v5.3.1
-        with:
-          args: >
-            -Dsonar.javascript.lcov.reportPaths=server/coverage/lcov.info
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+             - name: SonarCloud Scan
+          uses: SonarSource/sonarqube-scan-action@016cabf33a6b7edf0733e179a03ad408ad4e88ba
+          with:
+            args: >
+              -Dsonar.javascript.lcov.reportPaths=server/coverage/lcov.info
+              -Dsonar.qualitygate.wait=true
+          env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+            - name: Run API tests with Newman
+          run: >
+            npx --yes newman run
+            "Postman/LibraryManagement API Tests.postman_collection.json"
+            --env-var "baseUrl=${{ secrets.API_BASE_URL }}"
 
 
