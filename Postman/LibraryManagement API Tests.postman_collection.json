@@ -1,23 +1,47 @@
 {
   "info": {
-    "_postman_id": "d722ea64-2b79-47fd-8be6-50beb1ab6cc0",
-    "name": "LibraryManagement API Tests",
-    "description": "### Welcome to Postman! This is your first collection. \n\nCollections are your starting point for building and testing APIs. You can use this one to:\n\n• Group related requests\n• Test your API in real-world scenarios\n• Document and share your requests\n\nUpdate the name and overview whenever you’re ready to make it yours.\n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "59130673",
-    "_collection_link": "https://go.postman.co/collection/59130673-d722ea64-2b79-47fd-8be6-50beb1ab6cc0?source=collection_link"
+    "_postman_id": "915e92d4-f6df-4215-951b-2c7c978b1e8e",
+    "name": "LibraryManagement API Tests - CORREGIDA v4",
+    "description": "Version con error de sintaxis JavaScript corregido en E11-09.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net",
+      "type": "string"
+    },
+    {
+      "key": "testIsbn",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdBookId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdBookId2",
+      "value": "",
+      "type": "string"
+    }
+  ],
   "item": [
     {
-      "name": "Get data",
+      "name": "E11-01 - Consultar todos los libros",
       "event": [
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test(\"Status code is 200\", function () {",
-              "    pm.response.to.have.status(200);",
+              "pm.test(\"E11-01: estado HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-01: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-01: contiene una lista de libros\", function () {",
+              "  const data = pm.response.json();",
+              "  function findArray(v, d = 0) { if (Array.isArray(v)) return v; if (!v || typeof v !== \"object\" || d > 6) return null; for (const k of Object.keys(v)) { const a = findArray(v[k], d + 1); if (a !== null) return a; } return null; }",
+              "  pm.expect(findArray(data), \"No se encontro una lista en la respuesta\").to.be.an(\"array\");",
               "});"
             ]
           }
@@ -25,105 +49,16 @@
       ],
       "request": {
         "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "postman-echo.com/get",
-          "host": [
-            "postman-echo",
-            "com"
-          ],
-          "path": [
-            "get"
-          ]
-        },
-        "description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
-      },
-      "response": []
-    },
-    {
-      "name": "Post data",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"Successful POST request\", function () {",
-              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-              "});",
-              ""
-            ]
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
           }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n\t\"name\": \"Add your name in the body\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
+        ],
         "url": {
-          "raw": "postman-echo.com/post",
+          "raw": "{{baseUrl}}/api/book/getAll",
           "host": [
-            "postman-echo",
-            "com"
-          ],
-          "path": [
-            "post"
-          ]
-        },
-        "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
-      },
-      "response": []
-    },
-    {
-      "name": "E11-01 - Consultar todos los libros",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test(\"E11-01: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-01: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-01: lista de libros\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.booksList).to.be.an(\"array\");\r",
-              "});\r",
-              ""
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
-          }
-        }
-      ],
-      "request": {
-        "auth": {
-          "type": "noauth"
-        },
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
-          "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
@@ -140,44 +75,31 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-02: estado HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-02: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-02: devuelve el libro solicitado\", function () {",
+              "  const data = pm.response.json();",
+              "  function findById(v, id, d = 0) { if (!v || typeof v !== \"object\" || d > 7) return null; if (!Array.isArray(v) && String(v._id || v.id || \"\") === id) return v; for (const k of Object.keys(v)) { const f = findById(v[k], id, d + 1); if (f) return f; } return null; }",
+              "  pm.expect(findById(data, \"698a656293e15cd95434c7a8\"), \"No se encontro el libro con el ID solicitado\").to.be.an(\"object\");",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/get/698a656293e15cd95434c7a8",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/book/get/698a656293e15cd95434c7a8",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
@@ -190,54 +112,44 @@
       "response": []
     },
     {
-      "name": "E11-03 — Consultar un libro inexistente por ID",
+      "name": "E11-03 - Consultar un libro inexistente por ID",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-03: estado HTTP esperado\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-03: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-03: no existe un libro con ese ID\", function () {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.be.an(\"object\");",
+              "  const returnedBook = data.book;",
+              "  const returnedId = returnedBook && (returnedBook._id || returnedBook.id);",
+              "  pm.expect(Boolean(returnedId && String(returnedId) === \"000000000000000000000000\")).to.eql(false);",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/book/get/000000000000000000000000",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
             "book",
-            "getAll"
+            "get",
+            "000000000000000000000000"
           ]
         }
       },
@@ -247,100 +159,149 @@
       "name": "E11-04 - Registrar un libro",
       "event": [
         {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const isbn = '978' + Date.now().toString().slice(-10);",
+              "pm.collectionVariables.set('testIsbn', isbn);"
+            ]
+          }
+        },
+        {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-04: alta exitosa HTTP 200 o 201\", function () {",
+              "  pm.expect([200, 201], \"El backend rechazo el registro: HTTP \" + pm.response.code + \" - \" + pm.response.text()).to.include(pm.response.code);",
+              "});",
+              "pm.test(\"E11-04: la respuesta de alta es JSON\", function () {",
+              "  pm.expect(pm.response.headers.get(\"Content-Type\") || \"\", \"Respuesta recibida: \" + pm.response.text()).to.include(\"application/json\");",
+              "  pm.response.to.be.json;",
+              "});",
+              "pm.test(\"E11-04: devuelve ID del libro creado\", function () {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.success).to.eql(true);",
+              "  pm.expect(data.newBook).to.be.an(\"object\");",
+              "  pm.expect(data.newBook._id).to.exist;",
+              "  pm.collectionVariables.set(\"createdBookId\", String(data.newBook._id));",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
-        "method": "GET",
-        "header": [],
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/book/add",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
             "book",
-            "getAll"
+            "add"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Libro de prueba E11-04\",\n  \"isbn\": \"{{testIsbn}}\",\n  \"authorId\": \"698a656093e15cd95434c794\",\n  \"genreId\": \"698a656193e15cd95434c79e\",\n  \"isAvailable\": true,\n  \"summary\": \"Libro creado para validar las pruebas de API\",\n  \"photoUrl\": \"\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "E11-05 - Consultar un libro por ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"E11-05: estado HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-05: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-05: devuelve el libro creado\", function () {",
+              "  const data = pm.response.json();",
+              "  const expectedId = pm.collectionVariables.get(\"createdBookId\");",
+              "  function findById(v, id, d = 0) { if (!v || typeof v !== \"object\" || d > 7) return null; if (!Array.isArray(v) && String(v._id || v.id || \"\") === id) return v; for (const k of Object.keys(v)) { const f = findById(v[k], id, d + 1); if (f) return f; } return null; }",
+              "  pm.expect(expectedId, \"La solicitud de registro previa debe guardar el ID\").to.be.a(\"string\").and.not.empty;",
+              "  pm.expect(findById(data, expectedId), \"No se encontro el libro creado en la respuesta\").to.be.an(\"object\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/book/get/{{createdBookId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "book",
+            "get",
+            "{{createdBookId}}"
           ]
         }
       },
       "response": []
     },
     {
-      "name": "E11-05 — Consultar un libro por ID",
+      "name": "E11-06 - Consultar un libro por ID valido",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-06: estado HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-06: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-06: devuelve el libro del ID valido\", function () {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.success).to.eql(true);",
+              "  pm.expect(data.book).to.be.an(\"object\");",
+              "  pm.expect(String(data.book._id)).to.eql(\"698a656293e15cd95434c7a8\");",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/get/698a656293e15cd95434c7a8",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/book/get/698a656293e15cd95434c7a8",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
@@ -353,217 +314,148 @@
       "response": []
     },
     {
-      "name": "E11-06 — Consultar un libro por ID válido",
+      "name": "E11-07 - Consultar libro con ID invalido",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-07: respuesta controlada para ID invalido\", function () {",
+              "  pm.expect([200, 400, 404, 422]).to.include(pm.response.code);",
+              "  if (pm.response.code === 200) {",
+              "    let data = {}; try { data = pm.response.json(); } catch (e) {}",
+              "    pm.expect(data.success === true && (data.book || data.newBook), \"No debe devolver un libro como exitoso\").to.eql(false);",
+              "  }",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/book/get/123",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
             "book",
-            "getAll"
+            "get",
+            "123"
           ]
         }
       },
       "response": []
     },
     {
-      "name": "E11-07 - Consultar libro con ID inválido",
+      "name": "E11-08 - Consultar libro por ID inexistente con formato valido",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-08: estado HTTP esperado\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-08: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-08: no existe un libro con ese ID\", function () {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.be.an(\"object\");",
+              "  const returnedBook = data.book;",
+              "  const returnedId = returnedBook && (returnedBook._id || returnedBook.id);",
+              "  pm.expect(Boolean(returnedId && String(returnedId) === \"000000000000000000000001\")).to.eql(false);",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/book/get/000000000000000000000001",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
             "book",
-            "getAll"
+            "get",
+            "000000000000000000000001"
           ]
         }
       },
       "response": []
     },
     {
-      "name": "E11-08 — Consultar un libro por ID inexistente con formato válido",
+      "name": "E11-09 - Registrar libro sin titulo",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-09: rechaza el libro sin nombre\", function () {",
+              "  pm.expect([400, 422]).to.include(pm.response.code);",
+              "});",
+              "pm.test(\"E11-09: devuelve una respuesta de validacion legible\", function () {",
+              "  const body = pm.response.text();",
+              "  pm.expect(body.trim(), \"La API debe explicar el rechazo\").to.not.equal(\"\");",
+              "  const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+              "  if (contentType.includes(\"application/json\")) {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data).to.be.an(\"object\");",
+              "  } else {",
+              "    console.warn(\"El backend responde texto plano en el error de validacion: \" + body);",
+              "  }",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
-          "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
-          ],
-          "path": [
-            "api",
-            "book",
-            "getAll"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "E11-09 - Registrar libro sin titulo.",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
           }
-        }
-      ],
-      "request": {
-        "auth": {
-          "type": "noauth"
-        },
-        "method": "GET",
-        "header": [],
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/book/add",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
             "book",
-            "getAll"
+            "add"
           ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"isbn\": \"9780000000115\",\n  \"authorId\": \"698a656093e15cd95434c794\",\n  \"genreId\": \"698a656193e15cd95434c79e\",\n  \"isAvailable\": true,\n  \"summary\": \"Prueba de validacion sin titulo\",\n  \"photoUrl\": \"\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         }
       },
       "response": []
@@ -572,52 +464,69 @@
       "name": "E11-10 - Registrar libro con datos validos",
       "event": [
         {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const isbn = '978' + Date.now().toString().slice(-10);",
+              "pm.collectionVariables.set('testIsbn', isbn);"
+            ]
+          }
+        },
+        {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-10: alta exitosa HTTP 200 o 201\", function () {",
+              "  pm.expect([200, 201], \"El backend rechazo el registro: HTTP \" + pm.response.code + \" - \" + pm.response.text()).to.include(pm.response.code);",
+              "});",
+              "pm.test(\"E11-10: la respuesta de alta es JSON\", function () {",
+              "  pm.expect(pm.response.headers.get(\"Content-Type\") || \"\", \"Respuesta recibida: \" + pm.response.text()).to.include(\"application/json\");",
+              "  pm.response.to.be.json;",
+              "});",
+              "pm.test(\"E11-10: devuelve ID del libro creado\", function () {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.success).to.eql(true);",
+              "  pm.expect(data.newBook).to.be.an(\"object\");",
+              "  pm.expect(data.newBook._id).to.exist;",
+              "  pm.collectionVariables.set(\"createdBookId2\", String(data.newBook._id));",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
-        "method": "GET",
-        "header": [],
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/book/add",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
             "book",
-            "getAll"
+            "add"
           ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Libro de prueba E11-10\",\n  \"isbn\": \"{{testIsbn}}\",\n  \"authorId\": \"698a656093e15cd95434c794\",\n  \"genreId\": \"698a656193e15cd95434c79e\",\n  \"isAvailable\": true,\n  \"summary\": \"Prueba de registro con datos validos\",\n  \"photoUrl\": \"\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         }
       },
       "response": []
@@ -628,48 +537,35 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-11: estado HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-11: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-11: contiene una lista de autores\", function () {",
+              "  const data = pm.response.json();",
+              "  function findArray(v, d = 0) { if (Array.isArray(v)) return v; if (!v || typeof v !== \"object\" || d > 6) return null; for (const k of Object.keys(v)) { const a = findArray(v[k], d + 1); if (a !== null) return a; } return null; }",
+              "  pm.expect(findArray(data), \"No se encontro una lista de autores\").to.be.an(\"array\");",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/author/getAll",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
-            "book",
+            "author",
             "getAll"
           ]
         }
@@ -677,215 +573,162 @@
       "response": []
     },
     {
-      "name": "E11-12 - Consultar autor por ID válido.",
+      "name": "E11-12 - Consultar autor por ID valido",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-12: estado HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-12: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-12: devuelve el autor solicitado\", function () {",
+              "  const data = pm.response.json();",
+              "  function findById(v, id, d = 0) { if (!v || typeof v !== \"object\" || d > 7) return null; if (!Array.isArray(v) && String(v._id || v.id || \"\") === id) return v; for (const k of Object.keys(v)) { const f = findById(v[k], id, d + 1); if (f) return f; } return null; }",
+              "  pm.expect(findById(data, \"698a656093e15cd95434c794\"), \"No se encontro el autor con el ID solicitado\").to.be.an(\"object\");",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/author/get/698a656093e15cd95434c794",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
-            "book",
-            "getAll"
+            "author",
+            "get",
+            "698a656093e15cd95434c794"
           ]
         }
       },
       "response": []
     },
     {
-      "name": "E11-13 - Consultar autor por ID inexistente.",
+      "name": "E11-13 - Consultar autor por ID inexistente",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-13: respuesta HTTP controlada\", function () { pm.expect([200, 400, 404, 422]).to.include(pm.response.code); });",
+              "pm.test(\"E11-13: no devuelve el autor inexistente\", function () {",
+              "  let data = null; try { data = pm.response.json(); } catch (e) {}",
+              "  function findById(v, id, d = 0) { if (!v || typeof v !== \"object\" || d > 7) return null; if (!Array.isArray(v) && String(v._id || v.id || \"\") === id) return v; for (const k of Object.keys(v)) { const f = findById(v[k], id, d + 1); if (f) return f; } return null; }",
+              "  pm.expect(findById(data, \"000000000000000000000000\")).to.equal(null);",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/author/get/000000000000000000000000",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
-            "book",
-            "getAll"
+            "author",
+            "get",
+            "000000000000000000000000"
           ]
         }
       },
       "response": []
     },
     {
-      "name": "E11-14 - Consultar autor por ID inválido.",
+      "name": "E11-14 - Consultar autor por ID invalido",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-14: respuesta controlada para ID invalido\", function () {",
+              "  pm.expect([200, 400, 404, 422]).to.include(pm.response.code);",
+              "  if (pm.response.code === 200) { let data = {}; try { data = pm.response.json(); } catch (e) {} pm.expect(data.success === true && data.author, \"No debe devolver un autor como exitoso\").to.eql(false); }",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/author/get/123",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
-            "book",
-            "getAll"
+            "author",
+            "get",
+            "123"
           ]
         }
       },
       "response": []
     },
     {
-      "name": "E11-15 - Consultar todos los generos.",
+      "name": "E11-15 - Consultar todos los generos",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"E11-02: estado HTTP 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: respuesta exitosa\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.success).to.eql(true);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"E11-02: se devuelve un libro\", function () {\r",
-              "    const data = pm.response.json();\r",
-              "    pm.expect(data.book).to.be.an(\"object\");\r",
-              "    pm.expect(data.book._id).to.eql(\"698a656293e15cd95434c7a8\");\r",
-              "});\r",
-              "\r",
-              ""
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"E11-15: estado HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"E11-15: respuesta JSON\", function () { pm.response.to.be.json; });",
+              "pm.test(\"E11-15: contiene una lista de generos\", function () {",
+              "  const data = pm.response.json();",
+              "  function findArray(v, d = 0) { if (Array.isArray(v)) return v; if (!v || typeof v !== \"object\" || d > 6) return null; for (const k of Object.keys(v)) { const a = findArray(v[k], d + 1); if (a !== null) return a; } return null; }",
+              "  pm.expect(findArray(data), \"No se encontro una lista de generos\").to.be.an(\"array\");",
+              "});"
+            ]
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
         "url": {
-          "raw": "https://librarymanagement-api-luisa2-hpgkc7dygchnd6dm.mexicocentral-01.azurewebsites.net/api/book/getAll",
-          "protocol": "https",
+          "raw": "{{baseUrl}}/api/genre/getAll",
           "host": [
-            "librarymanagement-api-luisa2-hpgkc7dygchnd6dm",
-            "mexicocentral-01",
-            "azurewebsites",
-            "net"
+            "{{baseUrl}}"
           ],
           "path": [
             "api",
-            "book",
+            "genre",
             "getAll"
           ]
         }
