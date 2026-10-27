@@ -13,11 +13,11 @@ const memberSchema = new mongoose.Schema({
         required: false
     },
     nic: {
-        type: Integer,
+        type: Number,
         required: true
     },
     phone: {
-        type: Integer,
+        type: String,
         required: true
     },
     status: {
